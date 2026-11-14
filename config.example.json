@@ -1,0 +1,36 @@
+{
+  "native": {
+    "wrapperPath": "/opt/QQNT/resources/app/wrapper.node"
+  },
+  "qq": {
+    "dbPath": "/home/you/.config/QQ/naive/nt_qq/nt_msg.db"
+  },
+  "session": {
+    "syncGraceMs": 15000
+  },
+  "secToken": {
+    "rotateMs": 86400000
+  },
+  "log": {
+    "level": "info"
+  },
+  "keepRaw": false,
+  "maxReloginAttempts": 5,
+  "onebot": {
+    "networks": {
+      "wsServers": [
+        {
+          "name": "client",
+          "host": "127.0.0.1",
+          "port": 6700,
+          "role": "Universal",
+          "messageFormat": "array",
+          "reportSelfMessage": true
+        }
+      ],
+      "httpServers": [],
+      "wsClients": [],
+      "httpClients": []
+    }
+  }
+}
