@@ -29,7 +29,28 @@ WeqBot **不做 slim 裁剪版**：用的就是 `nt_helper` 的完整产物，�
 | pnpm | 与根 `package.json` 的 `packageManager` 一致（`pnpm@12.8.1`） |
 | 原生组件 | `nt_helper` 构建产物（`pnpm native:fetch` 取，或本地 cargo 构建） |
 
-### 安装依赖
+### 一键跑起来（推荐）
+
+```bash
+git clone https://github.com/weq-devs/WeqBot.git
+cd WeqBot
+pnpm dev
+```
+
+`pnpm dev`（`scripts/dev.mjs`）按顺序做四件事，已经就绪的步骤会跳过：
+
+1. `node_modules` 不完整 → `pnpm install --frozen-lockfile`；
+2. 原生组件缺 `openSession` / `attachPushSink` → 优先装本地 `nt_helper` 构建
+   （同级的 `../nt_helper` 或 `NT_HELPER_DIR`），没有才回落 release 产物；
+3. `packages/webui/dist` 缺失或比源码旧 → `build:webui`；
+4. 起控制台，参数原样透传给 CLI。
+
+后面的参数照常传：`pnpm dev -- --account <uin> --config <cfg>`。开关有 `--rebuild`
+（强制重建前端）、`--no-build`（不构建前端）、`--release`（强制 release 产物）。
+
+### 手动安装
+
+想一步步来，或者要看每一步的原始输出：
 
 ```bash
 git clone https://github.com/weq-devs/WeqBot.git
@@ -54,11 +75,13 @@ pnpm native:fetch --check    # 只比对，不下载
 pnpm native:fetch --verify   # 装完在隔离子进程里 require 一次，看 getInitStatus()
 ```
 
-::: warning release 仓落后时要装本地构建
+::: warning 开发期必须装本地构建
 
-`native/pinned.json` 锚的是发布仓里**冻结**的那一份。它可能落后 `nt_helper` 源码
-（例如旧的 napi 绑定），缺 `openSession` / `pushSink` / `statusSink` 时跑不了 mode2 上线。
-这种情况装本机 cargo 构建：
+`native/pinned.json` 锚的发布仓那份**现在**就是旧 napi 绑定构建：缺 `openSession` /
+`pushSink` / `statusSink`，只能登录换票，跑不了 mode2 上线。所以开发期要走本机 cargo 构建
+（`pnpm dev` 会自动找，见上）。等发布仓补上新绑定后，这条限制自然消失。
+
+手动装本地构建：
 
 ```bash
 cd ../nt_helper && cargo build --release   # 或 napi build
