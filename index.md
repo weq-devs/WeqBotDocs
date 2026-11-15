@@ -29,7 +29,7 @@ features:
     details: 真机实测同账号可双端在线。但产品口径仍守「QQ 在线走借会话、QQ 离线才自建」，不做抢登录。
   - title: 一套事件契约
     details: 协议层解出的推送统一翻译成语义事件（BotEvent）。OneBot 适配层与嵌入宿主消费同一份。
-  - title: 196 条 OneBot 动作
+  - title: 205 条 OneBot 动作
     details: 消息、群管理、群文件、闪传、互动、QQ 空间、账号 Web 等 13 个分组，入参与说明随代码自动同步。
   - title: 可嵌入 WeQ
     details: 作为 sidecar 子进程由 desktop 拉起，凭据走控制通道交付，一个进程只服务一个账号。

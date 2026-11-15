@@ -1,0 +1,80 @@
+# 控制台（WebUI）
+
+控制台是 WeqBot 的自带管理界面：登录账号、看运行状态、改 OneBot 网络、翻日志、手调 action。
+它由 `@weqbot/node` 直接托管，不需要单独部署前端。
+
+## 启动
+
+```bash
+weqbot                                   # 只起控制台，等你在浏览器里选账号
+weqbot --account <uin> --config <cfg>    # 先上线，再提供控制台
+weqbot --account <uin> --no-webui        # 纯 CLI，不开控制台
+```
+
+启动后终端会打印：
+
+```text
+  WeqBot 控制台已启动
+  打开：http://127.0.0.1:6099/#token=wqb_xxxxxxxxxxxxxxxxxxxxxxxx
+  令牌：wqb_xxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+打开那个链接即可 —— 令牌在 URL 的 hash 里，**不会发给服务端**，页面读完立刻把它从地址栏抹掉。
+令牌只打印在终端，不进日志、不进任何 HTTP 响应。
+
+| 选项 / 环境变量 | 说明 |
+| --- | --- |
+| `--webui-port <port>` | 端口，默认 `6099` |
+| `--webui-host <host>` | 监听地址，默认 `127.0.0.1`；改成非回环时启动会告警 |
+| `WEQBOT_WEBUI_TOKEN` | 固定令牌（默认每次启动随机生成并打印） |
+
+## 安全边界
+
+这个端口后面是完整的 QQ 账号能力，所以边界写死在服务里：
+
+- **只监听回环**（`127.0.0.1` / `localhost`）。监听别的地址必须显式配置，且启动时告警。
+- **Host 校验**：只认 `127.0.0.1:<port>` / `localhost:<port>`，防 DNS rebinding
+  （攻击者的域名解析到 127.0.0.1 时，浏览器发来的 `Host` 会是他的域名）。
+- **写请求再校验 Origin**：跨站表单 / fetch 一律 403。
+- **访问令牌**：`wqb_` + 24 位 base62，常量时间比较；连续 5 次错误锁 30 秒。
+  会话是 HttpOnly + SameSite=Strict cookie，前端拿不到。
+- **CSP `default-src 'self'`**：页面里没有 inline script，头像走后端同源代理
+  （`/api/avatar/:uin`，只允许 qlogo 域名，防 SSRF）。
+- **敏感值脱敏**：日志与 action 参数里的 skey / pskey / cookie / clientKey / a1 / secToken
+  在写进观测缓冲前就替换成 `***`。
+
+## 页面
+
+| 页面 | 作用 |
+| --- | --- |
+| 访问令牌 | 用终端打印的令牌换浏览器会话 |
+| 账号登录 | 「本机账号」列出 `login.db` 解出的账号（含昵称 / 上次登录 / 有无 a1）；「扫码登录」出二维码；下方环境检查卡显示 QQ 安装、wrapper、`major.node`、数据目录、`login.db`、QQ 本体是否在线 |
+| 总览 | 账号主卡、收 / 发消息、action 调用与成功率、心跳 RTT、OneBot 各网络状态、会话时间线、调用最多的 action |
+| 网络 | 四类网络（HTTP 服务端 / HTTP 上报 / 正向 WS / 反向 WS）的启停、抽屉编辑、全局 qzone 开关；保存后只重启 OneBot 适配器，**账号保持在线** |
+| 日志 | 三条流（运行日志 / action 调用 / 推送事件）+ 统计头 + 详情抽屉 |
+| 调试 | 按域分组的 action 列表、参数 JSON、响应；写操作需二次确认 |
+
+账号菜单里三个动作是**分开**的：
+
+- **退出登录**：让 QQ 账号下线（发 `UnRegister`），控制台回到登录页；
+- **退出并删除本机凭据**：同上，并删掉 vault 里这个账号的 a1；
+- **退出控制台**：只清浏览器会话，**账号不下线**。
+
+## 开发前端
+
+```bash
+pnpm dev:webui                              # vite dev server，/api 代理到 127.0.0.1:6099
+VITE_WEBUI_MOCK=1 pnpm dev:webui            # 脱离后端看界面（mock 数据）
+pnpm build:webui                            # 构建 dist/，由控制台服务托管
+```
+
+前端不 import 任何 `@weqbot/*` 运行时包（`check-pure-ts` 的 `LAYERS` 记为 `[]`），
+它与后端的契约只在 `packages/webui/src/api/types.ts`。
+
+## 配置落点
+
+网络页保存时：
+
+1. 先停旧适配器 → 按新配置起；起不来会**回滚**上一份并报错（不能因为改错端口把 OneBot 面搞没）；
+2. 成功后才写回 `--config` 指定的文件 —— 只替换 `onebot` 这一块，其余键原样保留，
+   用 `.tmp` + rename 原子写。

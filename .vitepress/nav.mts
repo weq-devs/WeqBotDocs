@@ -34,6 +34,7 @@ export const guideSidebar = [
       { text: '总览', link: '/guide/' },
       { text: '下载与安装', link: '/guide/install' },
       { text: '登录与凭据', link: '/guide/login' },
+      { text: '控制台', link: '/guide/console' },
       { text: '配置文件', link: '/guide/config' },
     ],
   },

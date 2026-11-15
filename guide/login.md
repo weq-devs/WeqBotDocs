@@ -28,24 +28,21 @@ QQ 客户端登录后会把 a1 存在本地数据库里。WeQBot 不读 QQ 的�
 
 :::
 
-### 扫码登录（新设备，尚未实现）
+### 扫码登录（新设备）
 
-全新机器上没有 QQ 登录记录，也就没有 a1。此时只能扫码。
+全新机器上没有 QQ 登录记录，也就没有 a1。此时用**控制台的扫码登录**：
 
 ```text
-起 HTTP 服务 → 出二维码 → 手机确认 → 拿到 a1/uid → 写 vault → openSession 上线
+起控制台 → 手机 QQ 扫二维码 → 确认 → 拿到 a1/uid → 写 vault → openSession 上线
 ```
 
-::: danger 尚未实现
+二维码由原生 `qrLogin` 产生，通过 SSE 推给浏览器；45 秒硬超时，过期后页面点「刷新」重来。
+成功后 `a1Origin` 记为 `qr`，与 `login.db` 来的凭据区分开。
 
-原生组件已有 `qrLogin` 能力，但 **WeqBot 的 `NativePort` 还没有暴露它** ——
-`packages/wire/src/types.ts` 的 `NativePort` 目前只有 `quickLogin`。要打通这条路径需要：
+::: tip 控制台是推荐入口
 
-1. 在 `NativePort` 增加 `qrLogin`（含二维码流与取消句柄）；
-2. 在 `@weqbot/node` 加一个最小 HTTP 服务，把二维码推给浏览器；
-3. 登录成功后把 `a1` / `uid` 写进 vault。
-
-在此之前，新机器只能先把 QQ 登录一次、或从已有凭据的机器导入 vault 文件。
+`weqbot` 不带 `--account` 启动时只起控制台（`127.0.0.1:6099`），登录、上线、看日志、改网络
+都在浏览器里完成。细节见[控制台](./console.md)。
 
 :::
 
