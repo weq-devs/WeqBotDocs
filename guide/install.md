@@ -11,11 +11,13 @@ WeqBot 还没有发布版本，下表的「发布包」渠道都是**规划中**
 
 | 渠道 | 形态 | 状态 |
 | --- | --- | --- |
-| Release 压缩包 | 自带 slim 原生组件的目录 | 尚未实现 |
+| Release 压缩包 | 自带原生组件的目录 | 尚未实现 |
 | Docker 镜像 | 单进程，挂载配置与凭据目录 | 尚未实现 |
 
 发布包与源码运行的区别只有一处：**原生组件从哪来**。发布包自带
-`native/<platform>-<arch>/weqbot.node`；源码运行要自己准备（见下）。
+`native/<platform>/<arch>/nt_helper.node`；源码运行用 `pnpm native:fetch` 取（见下）。
+
+WeqBot **不做 slim 裁剪版**：用的就是 `nt_helper` 的完整产物，与 WeQ 同一份。
 
 ## 从源码运行
 
@@ -25,7 +27,7 @@ WeqBot 还没有发布版本，下表的「发布包」渠道都是**规划中**
 | --- | --- |
 | Node.js | ≥ 22.12.0 |
 | pnpm | 与根 `package.json` 的 `packageManager` 一致（`pnpm@12.8.1`） |
-| 原生组件 | WeqBot 自己的 slim 产物，或本地调试时借用 WeQ 的 full 产物 |
+| 原生组件 | `nt_helper` 构建产物（`pnpm native:fetch` 取，或本地 cargo 构建） |
 
 ### 安装依赖
 
@@ -41,20 +43,41 @@ pnpm install
 
 1. `--native-dir <dir>` 显式指定；
 2. `WEQBOT_NATIVE_DIR` 环境变量；
-3. `<repo>/native/<platform>-<arch>/`。
+3. `<repo>/native/<platform>/<arch>/`（与 WeQ 同布局）。
 
-目录里要求有 `weqbot.node`（首选）或 `nt_helper.node`（兼容 WeQ 的 full 产物，便于本地调试）。
+目录里要有 `nt_helper.node`（`native:fetch` 的落点名；旧布局的 `weqbot.node` 也认）。
 
 ```bash
-# 本地调试：借用 WeQ 的 full 产物
-mkdir -p native/linux-x64
-cp ../nt_helper/index.linux-x64-gnu.node native/linux-x64/weqbot.node
+pnpm native:fetch            # 本机平台，取 native/pinned.json 锚定的 tag
+pnpm native:fetch --all      # 五个平台
+pnpm native:fetch --check    # 只比对，不下载
+pnpm native:fetch --verify   # 装完在隔离子进程里 require 一次，看 getInitStatus()
 ```
 
-::: warning 时效
+::: warning release 仓落后时要装本地构建
 
-WeQ 的 full 产物自带 30 天有效期，而 WeqBot 的加载器**不校验**它（时效属于 WeQ 的发版
-问题）。本地调试时可以无视，正式分发必须用无时效的 slim 产物。
+`native/pinned.json` 锚的是发布仓里**冻结**的那一份。它可能落后 `nt_helper` 源码
+（例如旧的 napi 绑定），缺 `openSession` / `pushSink` / `statusSink` 时跑不了 mode2 上线。
+这种情况装本机 cargo 构建：
+
+```bash
+cd ../nt_helper && cargo build --release   # 或 napi build
+cd ../WeqBot
+pnpm native:fetch --from-file ../nt_helper/index.linux-x64-gnu.node
+```
+
+`--from-file` 不写版本锚、不写安装记录（下次 `--check` 会如实说「本地没装过」），
+并在装之前检查有没有 `openSession`，没有会明确警告。
+
+:::
+
+::: tip 时效
+
+WeqBot 的加载器**不校验有效期**，也不许写死天数：天数只在 nt_helper 的 Rust 里定义一处
+（`common::BUILD_VALIDITY_SECS`），二进制通过 `getBuildInfo()` 自报 `buildTime` /
+`expireTime` / `validitySecs`。本地 cargo 构建是 `isDev: true`，不带时间戳、不过期；
+`pnpm native:fetch` 会把剩余时间打印出来，`--require-fresh` 只是发版前的临时门禁。
+按 2026-11-16 的口径，今后统一取消时效。
 
 :::
 
@@ -103,7 +126,7 @@ docker run -d \
 
 需要先解决的三件事（这也是它还没做的原因）：
 
-1. **原生组件要进镜像**：slim 产物必须随镜像分发，不能运行时再下载；
+1. **原生组件要进镜像**：镜像构建时用 `pnpm native:fetch --all` 预置，不在运行时下载；
 2. **凭据目录的所有权**：Linux 下 vault 是 `0600` 文件，容器内 uid 必须与挂载目录属主一致；
 3. **优雅下线**：`stop()` 要发 `UnRegister`，容器必须给它留出时间。进程已经接
    `SIGTERM`（Docker 默认信号）并等待 `closeSession` 完成，但 `docker stop` 的默认

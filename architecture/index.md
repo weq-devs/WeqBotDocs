@@ -86,7 +86,7 @@ native 能力探测 → 预检 → 取 a1 → quickLogin → openSession(mode 2)
 | 宿主 | 传什么 |
 | --- | --- |
 | WeQ desktop | `adaptNativeBinding(platform.native.ntHelper)` —— 注意 `NativeBundle` 不是扁平 binding |
-| 独立进程 | slim 加载器（`packages/node/src/loader.ts`）的产物 |
+| 独立进程 | `packages/node/src/loader.ts` 加载的 `nt_helper.node` |
 
 两条 sink 都在这里接：
 
@@ -99,7 +99,7 @@ bot **不读本地数据库**。消息全部来自服务端推送，没有「拉
 
 这条决定了三件事：
 
-1. slim 产物可以裁掉 SQLite、数据库解密等全套模块；
+1. 本地不落任何消息 / 媒体数据（红线 13）；
 2. 离线期间的消息不会补投（重连后只有新消息）；
 3. 历史查询类 OneBot action 依赖**进程内观测**（`MessageStore` 的有界内存表），
    不落盘、不建索引。

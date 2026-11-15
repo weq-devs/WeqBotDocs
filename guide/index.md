@@ -9,7 +9,7 @@ WeqBot 是一个**独立的 QQ bot 框架**：自己完成登录、上线注册�
 
 | 形态 | 原生组件 | 入口 | 状态 |
 | --- | --- | --- | --- |
-| 独立进程 | 自带 slim 产物（`native/<platform>-<arch>/weqbot.node`） | `@weqbot/node` | 骨架 |
+| 独立进程 | `nt_helper` 完整产物（`native/<platform>/<arch>/nt_helper.node`） | `@weqbot/node` | 骨架 |
 | 嵌入 WeQ desktop | 复用 WeQ 的 full 产物，**不带 `.node`** | `--sidecar` + `@weqbot/control` | 契约已定 |
 | 测试 | 桩实现 | 任意包 | 可用 |
 
@@ -36,8 +36,7 @@ WeQ 侧是 **sidecar 子进程**，不是同进程对象注入：一个进程只
    拿它去自建上线会与 QQ 互踢。自建上线的票据只能来自 `quickLogin` / `qrLogin`。
 2. **同一账号同一时刻只有一条凭据路径**。QQ 在线 → 借会话（mode 1）；QQ 离线 → 自建
    （mode 2）。框架不会在 QQ 在线时强行抢登录。
-3. **不读 QQ 的数据库**。bot 的消息只来自推送，不靠本地库补历史 —— 这也是 native 侧
-   能裁成 slim 产物的前提。
+3. **不读 QQ 的数据库**。bot 的消息只来自推送，不靠本地库补历史。
 
 ## 版本与状态标记
 

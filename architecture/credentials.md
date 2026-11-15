@@ -146,7 +146,7 @@ interface SecretStore {
 
 实现候选是 `@napi-rs/keyring`（三端、预编译产物，无需自己写 napi）。不引入 `keytar`（已停止维护）。
 
-最终方案未定 —— 若它进 slim native，也只是换一个实现，`CredentialVault` 契约不变。
+最终方案未定 —— 若将来改由 native 提供，也只是换一个实现，`CredentialVault` 契约不变。
 
 ## WeQ 嵌入场景
 
