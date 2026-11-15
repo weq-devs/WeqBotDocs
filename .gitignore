@@ -1,0 +1,14 @@
+node_modules/
+dist/
+*.tsbuildinfo
+
+# VitePress 构建产物与缓存（内容目录就是仓库根）
+.vitepress/dist
+.vitepress/cache
+
+# OneBot 动作快照：由 CI 从主仓拉取，不入库。
+# 主仓的 `schema/onebot-actions.json` 才是权威来源。
+data/actions.json
+
+.DS_Store
+*.log
