@@ -1,0 +1,23 @@
+/**
+ * OneBot 文档的少量全局样式。
+ *
+ * 组件自身的样式都写在 `<style scoped>` 里；这里只处理跨页面的约定：
+ * 协议里出现的标识符统一用等宽字体，长标识符不要在表格里撑破布局。
+ */
+
+/* action 名 / 字段名这类标识符，正文里也保持等宽，和表格一致 */
+.vp-doc code {
+  overflow-wrap: anywhere;
+}
+
+/* 参数表里的等宽小字，避免 code 默认字号把表格撑高 */
+.vp-doc td code,
+.vp-doc th code {
+  font-size: 0.85em;
+}
+
+/* 「尚未实现」标注块用中性色，不抢眼但清晰 */
+.vp-doc .custom-block.info.not-implemented {
+  border-color: var(--vp-c-divider);
+  background: var(--vp-c-bg-alt);
+}
