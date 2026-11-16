@@ -26,27 +26,30 @@ WeqBot 对外提供 **OneBot v11** 兼容接口。这一页讲清怎么连、怎
 
 ```json
 {
-  "onebot": {
-    "networks": {
-      "wsServers": [
-        {
-          "name": "client",
-          "host": "127.0.0.1",
-          "port": 6700,
-          "role": "Universal",
-          "messageFormat": "array",
-          "reportSelfMessage": true,
-          "accessToken": "可选"
-        }
-      ],
-      "httpServers": [],
-      "wsClients": [],
-      "httpClients": []
+  "onebotByUin": {
+    "2863253201": {
+      "networks": {
+        "wsServers": [
+          {
+            "name": "client",
+            "host": "127.0.0.1",
+            "port": 6700,
+            "role": "Universal",
+            "messageFormat": "array",
+            "reportSelfMessage": true,
+            "accessToken": "可选"
+          }
+        ],
+        "httpServers": [],
+        "wsClients": [],
+        "httpClients": []
+      }
     }
   }
 }
 ```
 
+OneBot 配置按 QQ 号隔离，键是 uin；不同账号可以有不同的端口拓扑。
 四类键**缺一不可**，不用就写空数组 `[]`。
 
 ### 公共字段

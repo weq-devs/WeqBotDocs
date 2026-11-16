@@ -8,7 +8,7 @@
 理由很直接：把 a1 写进 JSON 是最常见的泄漏路径，而这份文件经常被贴进 issue、提交进仓库、
 打进镜像。凭据只能走 `CredentialVault`。
 
-同理，**不认识的顶层键也报错**——拼错的键（`oneBot` vs `onebot`）静默失效比报错更糟。
+同理，**不认识的顶层键也报错**——拼错的键（`oneBot` vs `onebotByUin`）静默失效比报错更糟。
 
 ## 完整样例
 
@@ -33,24 +33,26 @@
   },
   "keepRaw": false,
   "maxReloginAttempts": 5,
-  "onebot": {
-    "networks": {
-      "wsServers": [
-        {
-          "name": "client",
-          "host": "127.0.0.1",
-          "port": 6700,
-          "role": "Universal",
-          "messageFormat": "array",
-          "reportSelfMessage": true
-        }
-      ],
-      "httpServers": [],
-      "wsClients": [],
-      "httpClients": []
-    },
-    "qzone": true,
-    "qzoneDomain": "qzone.qq.com"
+  "onebotByUin": {
+    "2863253201": {
+      "networks": {
+        "wsServers": [
+          {
+            "name": "client",
+            "host": "127.0.0.1",
+            "port": 6700,
+            "role": "Universal",
+            "messageFormat": "array",
+            "reportSelfMessage": true
+          }
+        ],
+        "httpServers": [],
+        "wsClients": [],
+        "httpClients": []
+      },
+      "qzone": true,
+      "qzoneDomain": "qzone.qq.com"
+    }
   }
 }
 ```
@@ -91,9 +93,15 @@
 | `keepRaw` | `false` | 保留入站原始推送帧，诊断用。**会显著增大内存占用** |
 | `maxReloginAttempts` | `5` | 重登失败次数上限，耗尽后进入 `relogin-failed` |
 
-### `onebot`
+### `onebotByUin`
+
+OneBot 配置**按 QQ 号隔离**，键是 uin：
 
 ```ts
+interface OneBotByUin {
+  [uin: string]: OneBotConfig;
+}
+
 interface OneBotConfig {
   networks: {
     httpServers: HttpServerNetwork[];
@@ -106,6 +114,7 @@ interface OneBotConfig {
 }
 ```
 
+`--account` 指定的账号只读自己的那一份；WebUI 网络页也只读写当前登录账号。
 **四类网络都是数组** —— 一个账号可以同时挂多个正向 WS、多个反向 WS、多个 HTTP 监听。
 
 ::: warning `networks` 的四类键缺一不可
@@ -141,12 +150,12 @@ interface OneBotConfig {
 - 顶层必须是对象；
 - 出现凭据类键 → 报错；
 - 出现不认识的键 → 报错并列出可用键；
-- `onebot` 存在时，`networks` 必须存在且四类都是数组。
+- `onebotByUin` 存在时，每个值都必须有 `networks`，且四类都是数组。
 
 深层业务校验交给 `createBot`（它启动时逐项校验）。两边不重复，避免规则漂移。
 
 报错信息一定带**具体是哪一项**，因为这个文件是手写的，只说「配置无效」等于没写：
 
 ```text
-配置文件 /tmp/weqbot.json 无效：不认识的键 "oneBot"（可用：native / qq / session / secToken / onebot / log / keepRaw / maxReloginAttempts）
+配置文件 /tmp/weqbot.json 无效：不认识的键 "oneBot"（可用：native / qq / session / secToken / onebotByUin / log / keepRaw / maxReloginAttempts）
 ```
