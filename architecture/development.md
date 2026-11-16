@@ -108,10 +108,34 @@ pnpm smoke:onebot --url ws://127.0.0.1:6700 --self <uin> --send   # 含真实发
 ## 日志
 
 ```bash
-pnpm dev:cli --account <uin> --verbose     # debug 级
+pnpm dev:cli --account <uin>              # info 级（默认）
+pnpm dev:cli --account <uin> --verbose    # debug 级
+pnpm dev:cli --account <uin> --trace      # trace：完整打印收发包
 ```
 
-`createLogger(module, { level })`，模块名会出现在每行前缀里。
+五级：`trace` < `debug` < `info` < `warn` < `error`。终端输出带颜色（非 TTY 或
+`NO_COLOR` 时自动关闭），格式是 `HH:MM:SS LEVEL [scope] 消息 {字段}`。
+
+### 落盘
+
+终端之外同时写文件，默认落在 `./logs/`：
+
+```text
+logs/weqbot-2026-11-16.log   # 按天，级别 >= WEQBOT_LOG_FILE_LEVEL（默认 debug）
+logs/native.log              # nt_helper 自己的日志（含签名 / 发包含 hex 的调试行）
+```
+
+| 环境变量 | 说明 |
+| --- | --- |
+| `WEQBOT_LOG_DIR` | 改落盘目录；设为 `off` 关闭落盘 |
+| `WEQBOT_LOG_LEVEL` | 终端级别（`--verbose` / `--trace` 会覆盖它） |
+| `WEQBOT_LOG_FILE_LEVEL` | 落盘级别，默认 `debug` |
+
+`trace` **不落盘**：它是按包计的高流量流（发包 / 回包 hex，不脱敏），只进终端和
+WebUI 观测缓冲。原生组件的日志也永远走文件 —— 终端只留我们自己的分级日志。
+
+`createLogger(module)`，模块名会出现在每行前缀里；`log.child('event')` 派生
+`bot.event` 这样的子 scope。日志写失败（只读挂载 / 磁盘满）只报一次，不影响业务。
 
 ::: tip stdout 是有语义的
 

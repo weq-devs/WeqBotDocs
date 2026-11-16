@@ -207,7 +207,7 @@ path = '/api'  → POST /api/send_msg
 所以「文档列出这条」不等于「这个部署能调」。启动日志会打印注册数与跳过数：
 
 ```text
-[info] cli: bot 已上线 {"uin":"…","onebot":{"port":6700,"actions":N}}
+08:30:00 INFO  [cli] bot 已上线 {"uin":"…","onebot":{"port":6700,"actions":N}}
 ```
 
 `N` 是实际注册成功的数量。

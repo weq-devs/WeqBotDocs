@@ -15,7 +15,7 @@ weqbot --account <uin> --no-webui        # 纯 CLI，不开控制台
 
 ```text
   WeqBot 控制台已启动
-  打开：http://127.0.0.1:6099/#token=wqb_xxxxxxxxxxxxxxxxxxxxxxxx
+  打开：http://127.0.0.1:6299/#token=wqb_xxxxxxxxxxxxxxxxxxxxxxxx
   令牌：wqb_xxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
@@ -24,9 +24,13 @@ weqbot --account <uin> --no-webui        # 纯 CLI，不开控制台
 
 | 选项 / 环境变量 | 说明 |
 | --- | --- |
-| `--webui-port <port>` | 端口，默认 `6099` |
+| `--webui-port <port>` | 端口，默认 `6299` |
 | `--webui-host <host>` | 监听地址，默认 `127.0.0.1`；改成非回环时启动会告警 |
 | `WEQBOT_WEBUI_TOKEN` | 固定令牌（默认每次启动随机生成并打印） |
+
+终端只留上面那个横幅。原生组件加载、WebUI 监听这些细节在 `--verbose`（或
+`--trace`）下才输出，并且默认同时写到 `./logs/`（见[开发与测试](../architecture/development.md#日志)）。
+`--trace` 会把收发包的完整 hex 打到终端 —— 排查协议用，内容不脱敏。
 
 ## 安全边界
 
@@ -63,7 +67,7 @@ weqbot --account <uin> --no-webui        # 纯 CLI，不开控制台
 ## 开发前端
 
 ```bash
-pnpm dev:webui                              # vite dev server，/api 代理到 127.0.0.1:6099
+pnpm dev:webui                              # vite dev server，/api 代理到 127.0.0.1:6299
 VITE_WEBUI_MOCK=1 pnpm dev:webui            # 脱离后端看界面（mock 数据）
 pnpm build:webui                            # 构建 dist/，由控制台服务托管
 ```

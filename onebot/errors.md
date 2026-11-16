@@ -39,7 +39,7 @@ const RETCODE = {
 `1404` 的 `wording` 会带具体 action 名。结合启动日志能判断是哪一类：
 
 ```text
-[info] cli: bot 已上线 {"uin":"…","onebot":{"port":6700,"actions":N}}
+08:30:00 INFO  [cli] bot 已上线 {"uin":"…","onebot":{"port":6700,"actions":N}}
 ```
 
 `N` 小于文档里的总数（205）就说明有 action 因后端能力不足被跳过了。
