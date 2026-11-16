@@ -153,3 +153,20 @@ fix(bot,protocol): 补齐加群请求处理与出站媒体 URL 源
 ```
 
 版本号未定，`0.0.0` 只是占位。**不要**在功能提交里顺手改版本号。
+
+## 发版
+
+只在准备发版时统一改版本号，不要在功能提交里手改：
+
+```bash
+pnpm version:set 0.1.0   # 根 package.json + packages/* + docs
+pnpm i                   # 刷新 lockfile
+git commit -am "chore(release): v0.1.0"
+git tag v0.1.0
+git push origin main --tags
+```
+
+推送 `v*` tag 会触发 `.github/workflows/release.yml`：先跑 `pnpm verify`，再构建
+五平台 × 两变体，最后创建 GitHub Release。Release 正文包含下载 / 校验说明，并自动
+追加 GitHub 生成的 commit / PR 变更列表。带 `-` 的版本（如 `v0.2.0-beta.1`）会标成
+预发布。需要重跑时，在 Actions 页面手动指定已存在的 tag 即可。
