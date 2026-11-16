@@ -96,9 +96,11 @@ pnpm native:fetch --from-file ../nt_helper/index.linux-x64-gnu.node
 
 ::: tip 时效
 
-WeqBot 的加载器**不校验有效期**，也不许写死天数：天数只在 nt_helper 的 Rust 里定义一处
-（`common::BUILD_VALIDITY_SECS`），二进制通过 `getBuildInfo()` 自报 `buildTime` /
-`expireTime` / `validitySecs`。本地 cargo 构建是 `isDev: true`，不带时间戳、不过期；
+WeqBot 的加载器**不自己计算有效期**，也不许写死天数：天数只在 nt_helper 的 Rust 里定义一处
+（`common::BUILD_VALIDITY_SECS`，当前 60 天），二进制通过 `getInitStatus()` 给结论、
+通过 `getBuildInfo()` 自报 `buildTime` / `expireTime` / `validitySecs`。
+加载时会检查 `getInitStatus()`：过期就明确提示更新，而不是等到第一次 native 调用才报
+`Environment validation failed`。本地 cargo 构建是 `isDev: true`，不带时间戳、不过期；
 `pnpm native:fetch` 会把剩余时间打印出来，`--require-fresh` 只是发版前的临时门禁。
 按 2026-11-16 的口径，今后统一取消时效。
 
