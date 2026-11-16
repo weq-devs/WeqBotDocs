@@ -125,8 +125,14 @@ idle → preflight → logging-in → logged-in → registering → online
 - QQ 在线 → 借会话（mode 1）；
 - QQ 离线 → 自建（mode 2）。
 
-原因是双端在线会让消息出现两处、回执语义混乱。独立进程形态下用 `qq.dbPath` 做预检
-（`isQqLoggedIn`）；不配就跳过检查并打 warn —— 这是产品红线，独立部署应尽量配置。
+原因是双端在线会让消息出现两处、回执语义混乱。独立进程形态下用这个账号的 `nt_msg.db`
+做预检（`isQqLoggedIn`）。路径按这个顺序取：
+
+1. 显式配置的 `qq.dbPath`（`--qq-db` / `WEQBOT_QQ_DB`）；
+2. 从 QQ 数据根 + 账号推导（Windows 是 `<数据根>/<uin>/nt_qq/nt_db/nt_msg.db`，
+   Linux / macOS 是 `<数据根>/nt_qq_<md5(md5(uid)+"nt_kernel")>/nt_db/nt_msg.db`）。
+
+两者都拿不到才跳过检查并打 warn —— 这是产品红线，独立部署仍建议显式配置。
 
 ## 换机与迁移
 

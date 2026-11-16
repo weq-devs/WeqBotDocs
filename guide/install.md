@@ -128,6 +128,25 @@ pnpm dev:cli --print-capabilities --qq-pid <pid> --account <uin>
 第二条会额外打印从 QQ 进程内存里读到的 `secToken` **来源与剩余 TTL**（不打印 token 本身
 —— 终端输出经常被贴进日志）。需要 root 或 `CAP_SYS_PTRACE`。
 
+### QQ 安装在哪里（自动探测顺序）
+
+控制台需要两个目录：**安装根**（含 QQ 可执行文件）和**数据根**（`login.db` / `nt_msg.db` 所在）。
+两者没有固定关系（Windows 上可以分别在 `C:` 和 `D:`），所以各自独立探测：
+
+| 顺序 | 安装根 | 数据根 |
+| --- | --- | --- |
+| 1 | 设置页 / 配置 `qq.installDir` | 设置页 / 配置 `qq.dataDir` |
+| 2 | `WEQBOT_QQ_INSTALL_DIR` | `WEQBOT_QQ_ROOT` |
+| 3 | `WEQBOT_QQ_EXE` | — |
+| 4 | Windows：`tencent://` / `mqqapi://` 协议处理器（`HKCR\...\shell\open\command`） | Windows：`UserDataInfo.ini` 的 `UserDataSavePath` |
+| 5 | Windows：注册表 `Uninstall\QQ` 的 `UninstallString` | Windows：`~/Documents/Tencent Files`、`~/Tencent Files`、`~/Admin*/Documents/Tencent Files` |
+| 6 | macOS：`/Applications/QQ.app`、`~/Applications/QQ.app`、Spotlight（`mdfind`） | macOS：`~/Library/Containers/com.tencent.qq/Data/Library/Application Support/QQ` |
+| 7 | Linux：`/opt/QQ/qq`、`/usr/share/QQ/qq`、`/usr/lib/QQ/qq`、`~/NapCat/opt/QQ/qq` | Linux：`$XDG_CONFIG_HOME/QQ`（默认 `~/.config/QQ`） |
+
+都找不到时不会报错 —— 控制台的设置页会显示「未找到」，在那里手动填即可（见 [控制台](/guide/console)）。
+路径可以填得「不精确」：填到 `resources/app`、`versions/<version>`、或者某个账号目录，
+服务端会自动归一到正确的那一层。
+
 ### 校验安装
 
 ```bash

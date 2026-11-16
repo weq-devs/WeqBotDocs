@@ -41,7 +41,12 @@ idle ──→ preflight ──→ logging-in ──→ logged-in ──→ regi
 
 ### preflight
 
-检查项：平台支持、QQ 安装路径存在、签名 VM 可用、native 能力齐全、vault 里有 a1。
+检查项：平台支持、QQ 安装路径存在、签名 VM 可用、native 能力齐全、vault 里有 a1，
+以及（控制台形态下）该账号的 `nt_msg.db` 没有被 QQ 本体持有。
+
+`nt_msg.db` 的路径优先取 `qq.dbPath`；没配时按数据根 + 账号推导
+（Windows `<数据根>/<uin>/nt_qq/nt_db/`，Linux / macOS `<数据根>/nt_qq_<hash>/nt_db/`，
+`hash = md5(md5(uid) + "nt_kernel")`）。推到的是**存在**的路径才会拿去做在线判定。
 
 任一失败都**停在这里**并报具体项 —— 这一步能查出来的问题，拖到联网阶段只会更难定位。
 

@@ -70,8 +70,14 @@
 | 键 | 说明 |
 | --- | --- |
 | `dbPath` | 账号 `nt_msg.db` 的绝对路径。**只**用于 `isQqLoggedIn` 预检（判断 QQ 本体是否在线），不读内容 |
+| `installDir` | QQ 安装根：Linux 是含 `qq` 的目录（如 `/opt/QQ`），macOS 是 `QQ.app`，Windows 是含 `QQ.exe` 的目录。**只**给控制台的环境探测用，bot 本身不读它 |
+| `dataDir` | QQ 数据根：Linux / macOS 是 `~/.config/QQ` 那种目录，Windows 是 `Tencent Files`。同样是控制台侧提示 |
 
-不配这一项会跳过预检并打 warn。独立部署应当配上，否则无法守住「QQ 在线不抢登录」的红线。
+`installDir` / `dataDir` 也可以直接在控制台的**设置页**填写，效果等价（设置页会写回这一份配置）。
+它们的优先级高于环境变量与自动探测：**设置页 / 配置 > 环境变量 > 自动探测**。
+
+`dbPath` 不配时，控制台会按「数据根 + 当前账号」推导出 `nt_msg.db`；推导不到才跳过预检并打
+warn。独立部署仍建议显式配置，否则无法守住「QQ 在线不抢登录」的红线。
 
 ### `session`
 
@@ -142,6 +148,9 @@ interface OneBotConfig {
 | `WEQBOT_NATIVE_DIR` | 原生组件目录 |
 | `WEQBOT_VAULT_DIR` | 凭据目录（默认 `~/.weqbot/accounts`），多实例隔离时用 |
 | `WEQBOT_QQ_DB` | 等价于 `--qq-db` |
+| `WEQBOT_QQ_INSTALL_DIR` | QQ **安装根**（含 `qq` / `QQ.exe` 的目录；macOS 是 `QQ.app`）。优先级低于配置文件的 `qq.installDir` |
+| `WEQBOT_QQ_ROOT` | QQ **数据根**（`~/.config/QQ` 那类目录）。**不是**安装目录；优先级低于 `qq.dataDir` |
+| `WEQBOT_QQ_EXE` | QQ 可执行文件的完整路径；等价于指定安装根，优先级低于 `WEQBOT_QQ_INSTALL_DIR` |
 
 ## 校验行为
 
