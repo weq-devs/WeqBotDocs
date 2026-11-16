@@ -1,0 +1,91 @@
+name: Docs
+
+# 文档站构建与部署。
+#
+# 这个仓库（`weq-devs/WeqBotDocs`）只装文档内容；内容根就是仓库根。
+# 上游是 `weq-devs/WeqBot` 的 `docs/` 目录 —— 本仓库以 submodule 形式挂在那边。
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          # 显式指定，而不是靠 package.json 的 packageManager —— 后者会让 pnpm
+          # 把整个二进制写进 lockfile。
+          version: 12.8.1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # OneBot 动作列表的数据源在主仓。CI 直接取主仓导出的快照，
+      # 保证文档与代码一致 —— 主仓的 `actions-snapshot.test.ts` 负责快照本身
+      # 不漂，这里只负责把最新的拿过来。
+      - name: Fetch OneBot action snapshot
+        run: |
+          mkdir -p data
+          curl -fsSL \
+            https://raw.githubusercontent.com/weq-devs/WeqBot/main/schema/onebot-actions.json \
+            -o data/actions.json
+
+      # build 内部先跑 check-docs（链接完整性），失败就不进 VitePress。
+      - name: Build docs
+        env:
+          DOCS_BASE: ${{ github.event_name == 'pull_request' && '/' || '/WeqBotDocs/' }}
+        run: pnpm build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-site
+          path: .vitepress/dist
+          retention-days: 7
+
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .vitepress/dist
+
+  deploy:
+    name: deploy
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: docs-deploy
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
