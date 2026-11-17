@@ -57,11 +57,15 @@ bot.events.on('state', (change) => {
 | `bot-exit` | OneBot `bot_exit` 主动下线 | 不重登 |
 | `relogin-failed` | 重登失败次数耗尽 | 需要人工介入 |
 | `register-failed` | 注册阶段就被拒（凭据失效 / 风控） | 检查 a1 或风控 |
+| `credential-expired` | a1 已失效（`140022014` / `015` / `016`），重登时发现 | 清除该账号凭据，让用户重新登录 / 扫码 |
 
 ```ts
 bot.events.on('offline', (event) => {
   if (event.reason === 'kicked' || event.reason === 'register-failed') {
     // 人工介入
+  }
+  if (event.reason === 'credential-expired') {
+    // 凭据没用了：删掉它，别拿同一串 a1 再试（会触发风控）
   }
 });
 ```
@@ -80,6 +84,33 @@ OneBot 的 `meta_event.heartbeat` 是适配器自己的定时器；这个是 nat
 后者能反映真实网络延迟。见[元事件](meta.md#心跳)。
 
 :::
+
+## `login-progress`
+
+`quickLogin` 期间的进度。存在的意义是**异常设备确认**：
+
+```ts
+{ type: 'login-progress'; event: LoginProgressEvent; at: number }
+
+interface LoginProgressEvent {
+  kind: 'state' | 'unusual-device' | 'qr-state' | 'info';
+  state?: string;
+  message: string; // 面向用户的一句话
+}
+```
+
+服务端把当前设备判成异常设备时，native 会在登录链路里等用户在手机 QQ 上点「确认登录」，
+最长 45 秒。这段时间**没有任何其它信号** —— 宿主不消费这条事件，UI 就只能一直转圈。
+
+```ts
+bot.events.on('login-progress', ({ event }) => {
+  if (event.kind === 'unusual-device') showPhonePrompt(event.message);
+  else showStage(event.message);
+});
+```
+
+事件里的认证物料（`unusualDeviceCheckSig` / 二维码字节）在 `@weqbot/wire` 的
+`parseLoginProgress` 里就被丢掉了：宿主不需要它们，多传一次就多一个泄漏面。
 
 ## `error`
 
