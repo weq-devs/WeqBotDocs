@@ -225,16 +225,6 @@ path = '/api'  → POST /api/send_msg
 | 需要后端方法 | 后端实现了列出的方法才注册 |
 | 按能力域判定 | 按功能域整体判定（如 `qzone` 开关关掉就整组不注册） |
 
-## 敏感能力
-
-::: danger 红包 / 转账 / 支付永不注册
-
-`send_redbag`、`transfer` 等资金类命令**不出现在 action 表里**，即使后端实现了也不注册。
-这类命令极易被黑产拿去做资金滥用。
-
-需要时请走 WeQ desktop 自己的通道，不走 OneBot。
-
-:::
 
 deny-list 是代码里的常量（`DENIED_ACTIONS`），不是配置项。
 
