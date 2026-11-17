@@ -3,7 +3,7 @@
 WeqBot 可以脱离独立进程，由 WeQ desktop 拉起成一个 **sidecar 子进程**。这一页讲清
 进程边界、控制通道、凭据交付，以及为什么不是「同进程对象注入」。
 
-源码：`packages/control/src/protocol.ts`、`packages/node/src/sidecar.ts`。
+源码：`packages/control/src/{protocol,codec,socket}.ts`、`packages/node/src/{control-host,sidecar,daemon}.ts`。
 
 ## 为什么是子进程
 
@@ -18,7 +18,8 @@ sidecar 的**契约与实现都在**，但 WeQ desktop 侧的 sidecar 管理器�
 
 1. **一个进程只持有一个 uin 的一条 SSO 会话**。多账号 = 多进程，凭据不跨进程共享内存 ——
    结构上杜绝串号；
-2. **生命周期随 desktop**。宿主退出 / 崩溃，sidecar 跟着退，不留孤儿；
+2. **生命周期可控**。sidecar 跟着宿主退，不留孤儿；需要「宿主关了 bot 还在」时改
+   用常驻 daemon 形态（`--serve`，见下文）；
 3. **纯 TS 打包**。sidecar 产物里**不能出现 `.node`**，只按路径加载 WeQ 资源里的那一个。
 
 ## 进程拓扑
@@ -119,6 +120,9 @@ sidecar 的退出条件有三个，任一条成立即退：
 宿主在 `app.on('before-quit')` 里应当先 `control.shutdown()` 再 kill，确保 `UnRegister`
 发得出去。
 
+daemon（`--serve`）没有第 2 条：连接断开只说明「暂时没人看」，不代表宿主没了。它只在
+收到 `shutdown` 或 `SIGINT` / `SIGTERM` / `SIGHUP` 时退。
+
 ## CLI 的 `--sidecar`
 
 ```bash
@@ -134,6 +138,53 @@ weqbot --sidecar --account <uin> --config <path>
 
 OneBot 配置**来自启动参数，不走控制通道**：一个 sidecar 一个账号，端口拓扑属于部署形态，
 不该由每次 login 决定。
+
+## CLI 的 `--serve`（常驻 daemon）
+
+sidecar 的生命周期跟着宿主：Electron 一退，QQ 会话就断。桌面端只是控制面板、bot 要
+7×24 挂着的场景不适合这种形态，所以控制通道还有 socket 版本：
+
+```bash
+weqbot --serve --account <uin> --socket <path>
+```
+
+```text
+WeQ desktop（或任何宿主）
+   │  connect（NDJSON over unix socket / named pipe）
+   ▼
+weqbot --serve --account <uin>    ← 常驻，OneBot 端口一直在线
+   │
+   └─→ QQ 会话（mode 2）
+```
+
+| 项 | `--sidecar` | `--serve` |
+| --- | --- | --- |
+| 传输 | NDJSON over stdio | NDJSON over unix socket / named pipe |
+| 生命周期 | 随宿主：stdin 关闭即退 | 独立：只有 `shutdown` / 信号才退 |
+| 客户端 | 1（父进程） | 多个（控制台、探针、WeQ 同时连） |
+| 客户端断开 | 等于宿主没了 → 退出 | 只是没人看 → **会话继续挂着** |
+| 默认路径 | — | `$XDG_RUNTIME_DIR/weqbot/weqbot-<uin>.sock`（Windows 用命名管道） |
+
+宿主侧：
+
+```ts
+import { connectControlSocket, defaultControlSocketPath } from '@weqbot/control';
+
+const peer = await connectControlSocket({ path: defaultControlSocketPath(uin) });
+await peer.request('login', { a1, guid, uid, device });
+peer.on((envelope) => {
+  /* state / heartbeat / onebot / bye */
+});
+```
+
+几条刻意为之的约束：
+
+- socket 文件权限 `0600`（父目录 `0700`）：unix socket 的访问控制就是文件权限，
+  默认 umask 下同机其他用户也能连；
+- 路径上残留的文件会**探测后**接管（先 connect 一次，被拒才认定是上次崩溃的尸体）。
+  连得上说明有活着的 daemon，直接报错 —— 盲删会把两个 daemon 挂到同一个 uin 上；
+- 凭据仍然只从 `login` 进来，daemon 不读 vault 之外的任何文件；
+- 宿主关自己的窗口**不应该发 `shutdown`**：那会把 bot 也带走，正是这一形态要避免的。
 
 ## 打包要求
 
