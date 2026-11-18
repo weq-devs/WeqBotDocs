@@ -41,7 +41,7 @@ const RETCODE = {
 08:30:00 INFO  [cli] bot 已上线 {"uin":"…","onebot":{"port":6700,"actions":N}}
 ```
 
-`N` 小于文档里的总数（205）就说明有 action 因后端能力不足被跳过了。
+`N` 小于文档里的总数（214）就说明有 action 因后端能力不足被跳过了。
 具体跳过了哪些，看 `adapter.skipped()` 或 `--verbose` 日志。
 
 :::

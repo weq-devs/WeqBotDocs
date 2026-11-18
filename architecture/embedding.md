@@ -22,6 +22,9 @@ sidecar 的**契约与实现都在**，但 WeQ desktop 侧的 sidecar 管理器�
    用常驻 daemon 形态（`--serve`，见下文）；
 3. **纯 TS 打包**。sidecar 产物里**不能出现 `.node`**，只按路径加载 WeQ 资源里的那一个。
 
+**没有 WebUI**：`--sidecar` / `--serve` 都不起控制台。管理界面由宿主编排（WeQ 在
+Electron 里自己实现网络配置页）；weqbot 的 WebUI 只属于独立部署那一形态。
+
 ## 进程拓扑
 
 ```text
@@ -72,7 +75,10 @@ interface ControlEvent    { kind: 'event';    event: string; data?: unknown }
 | --- | --- | --- | --- |
 | `ping` | `{}` | `{ pid, ts }` | 连通性探针；宿主确认子进程真的起来了 |
 | `status` | `{}` | `ControlStatus` | 当前状态与设备档案（**不含 a1**） |
-| `login` | `{ a1, guid, uid?, device?, qqDbPath? }` | `ControlStatus` | 交付 a1 并开始上线 |
+| `login` | `{ a1, guid, uid?, device?, qqDbPath? }` | `ControlStatus` | 交付 a1 并**自建上线**（mode 2，要求 QQ 离线） |
+| `attach` | `{ pid, uin, uid, guid, a2, d2, d2Key, secToken?, subAppId, clientVersion?, qua?, wrapperPath?, device? }` | `ControlStatus` | **有头模式**（mode 1，要求 QQ 在线）：借 QQ 的会话 |
+| `onebot.get` | `{}` | `ControlOneBotState` | 读 OneBot 配置（令牌打码）与实时监听 |
+| `onebot.set` | `{ config }` | `ControlOneBotState` | 改配置并立即生效；失败回滚旧配置 |
 | `shutdown` | `{ reason? }` | `null` | 主动下线并退出；宿主在 `before-quit` 里调 |
 
 **没有 uin 参数** —— 账号由 spawn 时决定，控制通道拿不到第二个账号。
@@ -80,13 +86,47 @@ interface ControlEvent    { kind: 'event';    event: string; data?: unknown }
 `login` 里的 `uid` 是 `openSession` 的必填字段：WeQ 的 `AccountConfig.uid` 是权威值，
 而 native 的 EasyLogin 不回传 uid。宿主不传就只能依赖 vault 里已有的值。
 
+### `login` 与 `attach` 互斥
+
+两者在「谁拥有账号的在线状态」上是对立的：`login` 是我们自己注册上线，`attach`
+只是搭 QQ 的 SSO 通道。同一个 daemon 只能成功其中一个，第二次调用返回
+`ALREADY_ONLINE`。`attach` **不写 vault**（a2/d2/d2Key 是运行期易失物）也
+**不发 `UnRegister`**（账号归 QQ 所有）。
+
+### ⚠️ mode 1 只发不收：没有事件
+
+这是设计边界，不是缺陷。mode 1 的 `openSession` 不发 `SsoInfoSync`、不注册，
+服务端因此**不往这条连接推任何消息**：
+
+| 能力 | mode 1（attach） | mode 2（login） |
+| --- | --- | --- |
+| action（发送 / 撤回 / 名单 / 群管理 / 空间） | ✅ | ✅ |
+| 事件（message / notice / request / meta_event） | ❌ **一条都没有** | ✅ |
+
+需要事件时由**宿主自己**提供：WeQ 已经有 `SsePushService`（轮询 `nt_msg.db` →
+POST 到用户配置的 `pushUrl`），用户接那个即可。WeqBot 不提供、也不打算提供
+mode 1 的事件转发 —— 多一条事件通道只会让同一份消息有两个来源。
+
+所以 `CONTROL_EVENTS.onebot` 在 mode 1 下是静默的：宿主不要把它当成「还没收到消息」
+的等待状态，UI 上应明确写「该模式只支持 action」。
+
+### OneBot 配置归宿主所有
+
+`onebot.set` 只改内存，**daemon 不落盘**：宿主（WeQ）是配置的权威来源，重启后会
+重新下发。配置形状与 `@weqbot/onebot` 的 `OneBotNetworks` 同构（`wsServers` /
+`wsClients` / `httpServers` / `httpClients` 四类）。
+
+失败语义是**不做端口顺延**：客户端把 `ws://127.0.0.1:6700` 写死在配置里，悄悄换成
+6701 只会让用户看到「运行中」却连不上。错误码 `ONEBOT_LISTEN_FAILED`，
+`details` 里带 `{ network, kind, host, port }`，宿主可以定位到具体哪一条。
+
 ### 事件
 
 | 事件名 | 数据 | 说明 |
 | --- | --- | --- |
 | `state` | 状态机变化 | |
-| `heartbeat` | 心跳 / 重连 / 被踢 | |
-| `onebot` | OneBot 事件（消息、通知、请求） | |
+| `heartbeat` | 心跳 / 重连 / 被踢 | 仅 mode 2 有心跳；mode 1 不会发 |
+| `onebot` | OneBot 事件（消息、通知、请求） | **仅 mode 2**；mode 1 只发不收，见上 |
 | `bye` | — | sidecar 自己即将退出 |
 
 事件语义在 `@weqbot/bot` 的 `BotEventMap` 里定义，`control` 只固定通道上的名字。
@@ -197,16 +237,15 @@ peer.on((envelope) => {
 
 :::
 
-## 端口拓扑（尚未定）
+## 端口拓扑
 
-WeQ desktop 现有进程内 OneBot 服务端只服务 mode 1；sidecar 的 OneBot 适配器服务 mode 2。
-**两个进程不能绑同一端口。**
+**没有拓扑问题。** mode 1 与 mode 2 互斥（见上），同一时刻只有一个 OneBot 后端在
+监听，所以「两个进程抢同一个端口」不会发生。
 
-两条路：
+真正要遵守的只有三条：
 
-| 方案 | 做法 | 代价 |
-| --- | --- | --- |
-| A（省事） | mode 2 账号用独立端口，账号页显示两套配置 | 客户端要按账号切换 |
-| B（体验好） | desktop 做 OneBot 网关，按账号状态路由 | 网关要同时懂两种事件源 |
-
-倾向先做 A，验证产品闭环后再评估 B。
+1. **每账号一个固定端口**：配置按 uin 存，客户端写死一次即可。QQ 上下线导致的
+   断线重连是外部事实，不是我们换端口造成的。
+2. **占用即失败**：不做自动顺延（原因见上）。上一个进程没退干净时，报错比
+   静默换端口更容易排查。
+3. **配置只有一个编辑点**：宿主（WeQ）的页面。daemon 只是执行者。
