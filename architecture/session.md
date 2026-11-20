@@ -98,7 +98,9 @@ degraded → 等 1s → logging-in → 失败 → 等 2s → 4s → 8s → 16s �
 
 `maxReloginAttempts`（默认 5）耗尽后进入 `relogin-failed`，进程停止重试。
 
-a1 还能用就不用重新登录 QQ —— 重登只是重新 `quickLogin(a1)`。
+a1 还能用就不用重新登录 QQ —— 重登只是重新 `quickLogin(a1)`。重登用的 a1 与 guid
+来自启动时的账号分组（本机账号用本机 `login.db` + 本机 guid，自主账号用 vault + 自持
+guid，见[凭据与设备档案](/architecture/credentials)），分组不会因为掉线而变。
 
 ## 崩溃恢复
 

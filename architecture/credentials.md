@@ -13,6 +13,7 @@ interface StoredAccount {
   uid: string;
   a1: Uint8Array;          // 敏感，落盘加密由宿主实现
   guid: string;            // 32 位小写 hex
+  group: 'local' | 'self'; // 账号分组，见下一节
   device: {
     os: string;
     appId: string;
@@ -36,6 +37,27 @@ interface StoredAccount {
 - 数据库密钥 / `keyMeta` —— bot 不读 QQ 库；
 - 扫描来的会话物料 —— 永远不做扫描凭据的 mode2。
 
+## 账号分组：本机 / 自主
+
+**同一份 guid 不能给两个身份用。** 分组就是为了守住这条：服务端按 guid 认设备，
+本机账号借的是 QQ 本体那台设备的身份，自主账号必须是自己那台。混用会互相顶下线、
+反复触发设备确认，而且「a1 失效时该清哪份」也会说不清。
+
+| 组 | 是谁 | guid | a1 | 凭据来源 |
+| --- | --- | --- | --- | --- |
+| `local` | 本机账号（QQ 本体在这台机器登录过） | 本机数据根里那条 | 每次从 `login.db` 现解；轮换后写回 `login.db` | `login.db`，vault 只留镜像兜底 |
+| `self` | 自主账号（扫码产生的新设备身份） | **首次扫码时随机生成**，之后一直复用 | vault | vault |
+
+落盘按组分开：`<group>-<uin>.json`。同一个 uin 可以在两组里各存一份，互不覆盖 ——
+这是「本机登录过的号后来也扫码登录」的唯一正确存法。
+
+```text
+~/.weqbot/accounts/local-123456789.json   # 本机账号（login.db 的镜像）
+~/.weqbot/accounts/self-123456789.json    # 自主账号（自持 guid）
+```
+
+有头模式不进 vault：它借的是运行中 QQ 的会话，设备身份自然还是本机 guid。
+
 ## a1
 
 a1 是长期身份凭据，`quickLogin(a1)` 用它换 a2 / d2 / d2Key。
@@ -43,6 +65,16 @@ a1 是长期身份凭据，`quickLogin(a1)` 用它换 a2 / d2 / d2Key。
 ### 会被轮换
 
 `quickLogin` 成功后 a1 可能变化。真机观察到 `a1Rotated=true`，`createBot` 会把它写回 vault。
+
+**本机组还要多写一步**：vault 只是镜像，QQ 本体读的是 `login.db`。所以控制台在本机
+账号上线成功后会比对 vault 里那份 a1 与本次使用的 a1，不同就调原生的
+`updateLoginDbA1`（对应 `update_login_db_a1`）加密写回 `login.db` 的 `[1004]`：
+
+- 只改 a1，不碰 `[1008]` / `[1013]` / `[1014]` / `[1015]` 等时间字段；
+- 原生侧在事务里写入并回读自检（`verified`），失败只告警 —— a1 已经能用，
+  不该因为回写失败把上线判失败；
+- 原生组件没有这个能力（老构建）时跳过，此时本机组只能「读」不能「回写」；
+- 写之前 QQ 本体必须已退出（它持有写锁），本机组的登录流程本来就会先结束它。
 
 ::: warning 直调原生组件的路径不会写回
 
@@ -98,20 +130,29 @@ EXPIRE / KICKED / ILLEGAL_TICKET，文案都是「你的用户身份已失效，
 
 ```ts
 interface CredentialVault {
-  list(): Promise<AccountSummary[]>;
-  get(uin: string): Promise<StoredAccount | undefined>;   // 取不到返回 undefined，不抛错
+  list(group?: AccountGroup): Promise<AccountSummary[]>;
+  get(uin: string, group?: AccountGroup): Promise<StoredAccount | undefined>; // 取不到返回 undefined，不抛错
   put(account: StoredAccount): Promise<void>;
-  delete(uin: string): Promise<void>;                    // 删凭据 ≠ 停止 bot
+  delete(uin: string, group?: AccountGroup): Promise<void>;   // 删凭据 ≠ 停止 bot
 }
 ```
+
+`group` 省略时按 `self` 取：自主凭据是默认的持久化对象。只认 uin 的调用方
+（`createBot`）由宿主用 `groupScopedVault(vault, group)` 包一层，这样它内部的
+a1 轮换回写也不会跨组。
 
 实现由宿主注入，业务代码里**不出现** `if (process.platform === ...)`。
 
 ### 独立进程：`FileCredentialVault`
 
 ```text
-~/.weqbot/accounts/<uin>.json      # 默认；WEQBOT_VAULT_DIR 可覆盖
+~/.weqbot/accounts/<group>-<uin>.json   # 默认；WEQBOT_VAULT_DIR 可覆盖
 ```
+
+旧版的 `<uin>.json`（没有 `group` 字段）仍然能读：按 `a1Origin` 推断分组
+（`login-db` → 本机，其余 → 自主）；下次 `put` 写到新文件名并清掉旧文件。
+推断出的组与请求的组不一致时**当作不存在** —— 拿本机凭据去当自主账号用，
+正是分组要禁止的事。
 
 磁盘信封：
 
