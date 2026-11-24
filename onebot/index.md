@@ -4,6 +4,10 @@ WeqBot 对外提供 **OneBot v11** 兼容接口。这一页讲清怎么连、怎
 
 动作清单见[动作列表](actions.md)（由代码自动生成，不会漂）。
 
+## 在 WeQ 中按需查询
+
+使用 WeQ 桌面端的 [MCP 服务器](https://weq-devs.github.io/WeqDocs/guide/mcp-server.html#按需查询和调用) 时，可按领域或关键词查询当前账号已注册的 OneBot 动作，然后查询单项参数并调用。每个 MCP 会话按令牌选择数据源，QQ 操作沿用该数据源的操作授权。
+
 ## 网络拓扑
 
 **四类网络可以同时存在**，每类都是数组：

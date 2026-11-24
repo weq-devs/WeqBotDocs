@@ -249,3 +249,9 @@ peer.on((envelope) => {
 2. **占用即失败**：不做自动顺延（原因见上）。上一个进程没退干净时，报错比
    静默换端口更容易排查。
 3. **配置只有一个编辑点**：宿主（WeQ）的页面。daemon 只是执行者。
+
+## 通过控制通道按需调用 OneBot
+
+WeQ 的 MCP 使用当前在线账号已经注册的 OneBot 适配器。宿主可用 `onebot.mcpList` 分页获取精简条目，用 `onebot.mcpDescribe` 获取一项的参数，用 `onebot.mcpCall` 复用 OneBot 的参数处理与回执。三项控制方法均由启动时确定的账号执行，宿主调用时无需再传 QQ 号。
+
+宿主依据当前会话的授权传入 `allowWrites`。控制端再次核对 action 是否已注册及是否接入 MCP。文本消息按纯文本处理，不能通过消息段访问宿主文件。直接接入的 OneBot HTTP／WebSocket 功能见[动作参考](../onebot/actions.md)。
