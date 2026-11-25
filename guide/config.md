@@ -95,7 +95,7 @@ warn。独立部署仍建议显式配置，否则无法守住「QQ 在线不抢�
 
 | 键 | 默认 | 说明 |
 | --- | --- | --- |
-| `log.level` | `info` | `trace` / `debug` / `info` / `warn` / `error`；`trace` 会打印收发包 hex（不脱敏） |
+| `log.level` | `info` | `trace` / `debug` / `info` / `warn` / `error`。`trace` 默认记录报文命令、长度及耗时 |
 | `keepRaw` | `false` | 保留入站原始推送帧，诊断用。**会显著增大内存占用** |
 | `maxReloginAttempts` | `5` | 重登失败次数上限，耗尽后进入 `relogin-failed` |
 

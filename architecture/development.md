@@ -110,11 +110,13 @@ pnpm smoke:onebot --url ws://127.0.0.1:6700 --self <uin> --send   # 含真实发
 ```bash
 pnpm dev:cli --account <uin>              # info 级（默认）
 pnpm dev:cli --account <uin> --verbose    # debug 级
-pnpm dev:cli --account <uin> --trace      # trace：完整打印收发包
+pnpm dev:cli --account <uin> --trace      # trace：记录报文命令、长度及耗时
 ```
 
 五级：`trace` < `debug` < `info` < `warn` < `error`。终端输出带颜色（非 TTY 或
 `NO_COLOR` 时自动关闭），格式是 `HH:MM:SS LEVEL [scope] 消息 {字段}`。
+
+启用 `trace` 时，可以为本次运行设置 `WEQBOT_TRACE_PACKET_BYTES=1`，额外输出未脱敏的收发包原始字节（hex）。
 
 ### 落盘
 
@@ -131,8 +133,7 @@ logs/native.log              # nt_helper 自己的日志（含签名 / 发包含
 | `WEQBOT_LOG_LEVEL` | 终端级别（`--verbose` / `--trace` 会覆盖它） |
 | `WEQBOT_LOG_FILE_LEVEL` | 落盘级别，默认 `debug` |
 
-`trace` **不落盘**：它是按包计的高流量流（发包 / 回包 hex，不脱敏），只进终端和
-WebUI 观测缓冲。原生组件的日志也永远走文件 —— 终端只留我们自己的分级日志。
+WeqBot 的 `trace` 日志只通过 stderr 输出。
 
 `createLogger(module)`，模块名会出现在每行前缀里；`log.child('event')` 派生
 `bot.event` 这样的子 scope。日志写失败（只读挂载 / 磁盘满）只报一次，不影响业务。

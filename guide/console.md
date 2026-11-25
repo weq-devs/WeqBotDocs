@@ -30,7 +30,7 @@ weqbot --account <uin> --no-webui        # 纯 CLI，不开控制台
 
 终端只留上面那个横幅。原生组件加载、WebUI 监听这些细节在 `--verbose`（或
 `--trace`）下才输出，并且默认同时写到 `./logs/`（见[开发与测试](../architecture/development.md#日志)）。
-`--trace` 会把收发包的完整 hex 打到终端 —— 排查协议用，内容不脱敏。
+`--trace` 默认记录报文命令、长度及耗时。需要查看未脱敏的原始报文字节时，同时设置 `WEQBOT_TRACE_PACKET_BYTES=1`。
 
 ## 安全边界
 
